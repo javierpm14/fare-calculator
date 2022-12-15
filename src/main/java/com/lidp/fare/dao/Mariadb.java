@@ -10,9 +10,9 @@ public class Mariadb {
 
     public Mariadb(){
         JDBC_DRIVER = "org.mariadb.jdbc.Driver";
-        DB_URL = "jdbc:mariadb://localhost:3307/lidp";
+        DB_URL = "jdbc:mariadb://localhost:3306/lidp";
         USER = "root";
-        PASS = "Caliber300400*";
+        PASS = "123";
     }
 
     public Connection getMariaDBConnection() throws ClassNotFoundException, SQLException {
