@@ -1,49 +1,126 @@
-# LIDP Kubernetes Challenge
+# LIDP Challenge (Javier's Take)
 
-This base project includes a service that calculates the fare for a flight given the following inputs:
+I decided to write my answer here for safekeeping, 
+highlighting what I did, what I missed, changes 
+made, etc. So let's begin!
 
-* Departure date of the flight
-* Travel distance of the flight in miles
-* Seat row (rows 0-3 are first class, etc.)
+## Everything's centered around this
 
-## Recommendations
+Unfortunately I couldn't finish all requirements 
+and there were some changes I had to make, but 
+they were centered around my main assumption: 
+Docker/Kubernetes won't be pretty.
 
-LIDP recommends the Spring Framework for exposing the application and implementing the data access layer. However, its use is not required if you are more comfortable with an alternative approach.
+Due to my lack of knowledge of Docker and 
+Kubernetes my main assumption was that I had to 
+make the challenge work by giving more priority to 
+my unknowns.
 
-Perhaps the most convenient way to create and deploy the application to a local Kubernetes cluster is to use [Docker Desktop](https://www.docker.com/products/docker-desktop/). The Kubernetes cluster can be enabled in the settings menu of the GUI. Alternatively, you can use a tool such as [minikube](https://minikube.sigs.k8s.io/docs/start/).
+## Requirements
 
-When deploying a spec, Kubernetes must pull the application image from a container registry. You are not required to push your image to a public container registry, such as Docker Hub. Instead, you can pull and run the docker registry image on your local system and push your application image to the registry container. In your spec, you then instruct Kubernetes to pull the image from the registry container. [Here](https://docs.docker.com/registry/deploying/#run-a-local-registry) are specific instructions on how to accomplish this.
+### [x] Expose the getFares and getFare service methods over HTTP.
 
-## Resources
+This was a bit complicated, but manageable. First problem I found was that I 
+couldn't easily add Spring to LIDP's project; it required having Intellij Ultimate.
 
-### Reference Documentation
+But a solution was [Spring Initializr](https://start.spring.io/). 
+With this wizard I created a project and replaced the main app with it. The idea 
+was to start adding the FareCalculator files to a project that would have all 
+the components, and it worked. These were the selected settings I used on the initializr:
 
-#### Gradle
-* [Official Gradle documentation](https://docs.gradle.org)
+* **`Project`**: Gradle - Kotlin
+* **`Language`**: Java
+* **`Spring Boot`**: 3.0.0
+* **`Project Metadata`**: Custom; have it your way, but make it as close as the original project.
+* **`Packaging`**: Jar
+* **`Java`**: 17
+* **`Dependencies`**: Spring Web
 
-#### Spring
-* [Spring Framework Overview](https://docs.spring.io/spring-framework/docs/current/reference/html/overview.html)
-* [Spring Boot Gradle Plugin Reference Guide](https://docs.spring.io/spring-boot/docs/current/gradle-plugin/reference/html/)
-* [Spring Data JPA](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#data.sql.jpa-and-spring-data)
-* [Spring Web](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#web)
-* [JDBC API](https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#data.sql)
+With this you'll have a basic project that has Spring and Gradle set up. 
 
-#### Docker
-* [Official Docker Documentation](https://docs.docker.com/)
-* [Dockerfile Reference](https://docs.docker.com/engine/reference/builder/)
+After that I had to make some changes to make the app work with the little time I had and 
+that's it. With my project you'll be able to access 2 routes:
 
-#### Kubernetes
-* [Official Kubernetes Documentation](https://kubernetes.io/docs/home/)
-* [Understanding Kubernetes Objects](https://kubernetes.io/docs/concepts/overview/working-with-objects/kubernetes-objects/)
-* [`kubectl` Reference Guide](https://kubernetes.io/docs/reference/generated/kubectl/kubectl-commands)
+1. **`fares`** (Plural): gets all fares from the database.
 
-### Guides
-* [Accessing Data with JPA](https://spring.io/guides/gs/accessing-data-jpa/)
-* [Building a RESTful Web Service](https://spring.io/guides/gs/rest-service/)
-* [Building REST services with Spring](https://spring.io/guides/tutorials/rest/)
-* [Accessing Relational Data using JDBC with Spring](https://spring.io/guides/gs/relational-data-access/)
-* [Managing Transactions](https://spring.io/guides/gs/managing-transactions/)
+[localhost:8080/fares](http://localhost:8080/fares)
 
-## Questions?
+2. **`fare`** (Singular): gets the fare by its parameters. Inserts the fare in database if not found. Uses default data if called with no parameters.
 
-If you encounter any difficulties with project setup, please email matthew.segreti@lidp.com for support!
+[localhost:8080/fare](http://localhost:8080/fare)
+
+[localhost:8080/fare?date=02/03/2023&miles=2&row=2](http://localhost:8080/fare?date=02/03/2023&miles=2&row=2)
+
+* **`date`**: date in **MM/dd/yyyy** format
+* **`miles`**: miles in number format
+* **`row`**: seat row in number format
+
+### [x] Connect the application to a database of your choosing.
+
+For this project I used MariaDB, since that's what I had installed at the moment. I imported the JDBC plugin
+
+[MariaDB Connector](https://mariadb.com/docs/server/connect/programming-languages/java/install/)
+
+I kept the port as 3306 and set **123** as the root password. I created a db called **`lidp`** and ran 
+this query to create the **`fares`** table:
+
+```
+CREATE TABLE fares (  
+    fare_id BigInt(20)  NOT NULL AUTO_INCREMENT,
+    fare_date           Date NOT NULL,
+    fare_distance_miles Double NOT NULL,
+    fare_seat_row       Integer(11) NOT NULL,
+    fare_amount         Double NOT NULL,
+    PRIMARY KEY (
+        fare_id
+    )
+) ENGINE=InnoDB AUTO_INCREMENT=12 ROW_FORMAT=DYNAMIC DEFAULT CHARACTER SET latin1 COLLATE latin1_swedish_ci;
+ALTER TABLE fares COMMENT = '';
+```
+
+### [x] Implement the data access layer to allow calculated fares to persist in the database and for users to query all stored fares.
+
+The previous requirement covers the basic of setting the database up, so yeah, data persistence will be a thing here.
+
+### [x] Ensure the FareCalculator can be compiled as a fat jar using Gradle.
+
+Luckily, Spring Initializr did good for this. Just pop up a console/terminal and do this
+
+`gradle clean`
+
+Then
+
+`gradle build`
+
+And that's it. You should see the jar file under `build/libs`
+
+### [ ] Create a Dockerfile used to build a container image of the FareCalculator.
+
+This is where I failed and brought shame to family. 
+
+I could create a container for MariaDB 
+(using `mariadb:latest` image) and I could access the database, but for some reason 
+I couldn't connect to it if the app was also on a container. I could connect 
+to the db if I were debugging/running intellij, but for some reason I get a 
+"Connection Refused" as soon as I containerize the app.
+
+I dunno, maybe the problem's with the dockerfile, or maybe I'm missing extra 
+stuff from Spring, but I couldn't find any posts or documentation that I could relate to.
+
+## Changes
+
+1. Main change would be the project replacement.
+2. I made changes to some files and classes. Did them to combat the time constraint.
+3. I also changed the typing on some functions and datapoints.
+
+## Improvements
+
+1. **Validations**: Currently there are no validations. A good update would be to validate the parameters and get some exceptions if something happens when interacting with the database.
+2. **Unit testing**: Some unit testing would be good for an "API".
+3. **UI**: Currently the app only works by making HTTP requests, so a good update would be a basic web page with its fare inputs
+
+## Conclusion
+
+So yeah, got stuck on the container part, but it's one of those instances where 
+if I had more time on my unknowns, I could've pulled it off. Or in a real case scenario, 
+there could be a high chance a teammate could have the answer.
